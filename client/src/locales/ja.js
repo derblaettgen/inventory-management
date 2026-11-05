@@ -11,6 +11,8 @@ export default {
     mainNavigation: 'メインナビゲーション',
     collapseSidebar: 'サイドバーを折りたたむ',
     expandSidebar: 'サイドバーを展開',
+    openMenu: 'ナビゲーションを開く',
+    closeMenu: 'ナビゲーションを閉じる',
     subtitle: '在庫管理システム'
   },
 
@@ -199,7 +201,8 @@ export default {
     category: 'カテゴリ',
     orderStatus: '注文ステータス',
     all: 'すべて',
-    allMonths: 'すべての月'
+    allMonths: 'すべての月',
+    reset: 'すべてのフィルターをリセット'
   },
 
   // Statuses

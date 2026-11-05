@@ -278,4 +278,29 @@ const handleLogout = () => {
   min-width: 20px;
   text-align: center;
 }
+
+/* Phones: avatar-only button; the name stays for screen readers */
+@media (max-width: 767px) {
+  .profile-button {
+    padding: 0.375rem;
+    min-height: 44px;
+  }
+
+  .profile-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  }
+
+  .profile-button .chevron {
+    display: none;
+  }
+
+  .dropdown-menu {
+    max-width: calc(100vw - 1.5rem);
+  }
+}
 </style>

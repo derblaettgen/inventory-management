@@ -180,4 +180,27 @@ const selectLanguage = (locale) => {
   color: #2563eb;
   flex-shrink: 0;
 }
+
+/* Phones: icon-only button; the label stays for screen readers */
+@media (max-width: 767px) {
+  .language-button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .language-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  }
+
+  .language-button .chevron {
+    display: none;
+  }
+}
 </style>

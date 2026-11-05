@@ -11,6 +11,8 @@ export default {
     mainNavigation: 'Main navigation',
     collapseSidebar: 'Collapse sidebar',
     expandSidebar: 'Expand sidebar',
+    openMenu: 'Open navigation',
+    closeMenu: 'Close navigation',
     subtitle: 'Inventory Management System'
   },
 
@@ -199,7 +201,8 @@ export default {
     category: 'Category',
     orderStatus: 'Order Status',
     all: 'All',
-    allMonths: 'All Months'
+    allMonths: 'All Months',
+    reset: 'Reset all filters'
   },
 
   // Statuses
