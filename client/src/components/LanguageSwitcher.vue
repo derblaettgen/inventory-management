@@ -97,24 +97,29 @@ const selectLanguage = (locale) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  height: 44px;
+  padding: 0 1rem;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #ececef);
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
   font-family: inherit;
-  font-size: 0.875rem;
-  color: #334155;
+  font-size: 0.938rem;
+  color: var(--ink, #18181b);
 }
 
 .language-button:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: var(--fill, #f4f4f5);
+}
+
+.language-button:focus-visible {
+  outline: 2px solid var(--ink, #18181b);
+  outline-offset: 2px;
 }
 
 .globe-icon {
-  color: #64748b;
+  color: var(--muted, #71717a);
   flex-shrink: 0;
 }
 

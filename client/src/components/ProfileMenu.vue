@@ -123,39 +123,46 @@ const handleLogout = () => {
 .profile-button {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 0.875rem;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  gap: 0.375rem;
+  padding: 0 0.25rem 0 0;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.2s ease;
   font-family: inherit;
 }
 
-.profile-button:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+.profile-button:focus-visible {
+  outline: 2px solid var(--ink, #18181b);
+  outline-offset: 2px;
+}
+
+/* name is read by screen readers; the avatar carries it visually */
+.profile-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
-  color: white;
+  background: #ede9fe;
+  color: var(--ink, #18181b);
+  transition: box-shadow 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 0.75rem;
-  letter-spacing: 0.025em;
+  font-size: 0.875rem;
 }
 
-.profile-name {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #0f172a;
+.profile-button:hover .avatar {
+  box-shadow: 0 0 0 3px var(--fill, #f4f4f5);
 }
 
 .chevron {
@@ -279,20 +286,16 @@ const handleLogout = () => {
   text-align: center;
 }
 
-/* Phones: avatar-only button; the name stays for screen readers */
+/* Phones: drop the chevron, keep a 40px avatar target inside a 44px row */
 @media (max-width: 767px) {
   .profile-button {
-    padding: 0.375rem;
     min-height: 44px;
+    padding: 0;
   }
 
-  .profile-name {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+  .avatar {
+    width: 40px;
+    height: 40px;
   }
 
   .profile-button .chevron {

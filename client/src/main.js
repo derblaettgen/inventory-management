@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import '@fontsource-variable/urbanist' // self-hosted UI font
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
 import Dashboard from './views/Dashboard.vue'

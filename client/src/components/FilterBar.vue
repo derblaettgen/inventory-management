@@ -103,18 +103,19 @@ export default {
 
 <style scoped>
 .filters-bar {
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--line, #ececef);
   padding: 0.75rem 0;
   position: sticky;
-  top: var(--topbar-h, 70px);
+  top: var(--topbar-h, 84px);
   z-index: 90;
 }
 
 .filters-container {
   max-width: 1600px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 0 2.5rem;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -126,78 +127,82 @@ export default {
   flex: 1;
   min-width: 0;
   align-items: center;
-  gap: 0.75rem 1rem;
-  flex: 1;
+  gap: 0.75rem 1.5rem;
 }
 
 .filter-group {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .filter-group label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted, #71717a);
   white-space: nowrap;
 }
 
 .filter-select {
-  padding: 0.4rem 0.75rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  font-size: 0.813rem;
-  color: #0f172a;
-  background: white;
-  cursor: pointer;
-  transition: all 0.2s;
+  appearance: none;
+  height: 38px;
+  padding: 0 2.25rem 0 1rem;
+  border: 1px solid var(--line, #ececef);
+  border-radius: 999px;
+  font-size: 0.938rem;
   font-weight: 500;
-  min-width: 140px;
+  color: var(--ink, #18181b);
+  /* chevron drawn inline so the pill keeps one consistent arrow across browsers */
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 0.875rem center / 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  min-width: 150px;
 }
 
 .filter-select:hover {
-  border-color: #94a3b8;
+  border-color: #d4d4d8;
 }
 
-.filter-select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.filter-select:focus-visible {
+  outline: 2px solid var(--ink, #18181b);
+  outline-offset: 2px;
 }
 
 .reset-filters-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.4rem;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  color: #64748b;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  background: #fff;
+  border: 1px solid var(--line, #ececef);
+  border-radius: 999px;
+  color: var(--ink, #18181b);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.15s ease;
   flex-shrink: 0;
 }
 
 .reset-filters-btn:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #0f172a;
+  background: var(--fill, #f4f4f5);
+}
+
+.reset-filters-btn:focus-visible {
+  outline: 2px solid var(--ink, #18181b);
+  outline-offset: 2px;
 }
 
 .reset-filters-btn:disabled {
-  opacity: 0.3;
+  color: var(--muted-2, #a1a1aa);
   cursor: not-allowed;
 }
 
 .reset-filters-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 /* Phones: 2x2 grid with labels above, and not sticky -- four filters would
-   otherwise pin ~180px of a small screen under the topbar */
+   otherwise pin a large share of a small screen under the topbar */
 @media (max-width: 767px) {
   .filters-bar {
     position: static;
@@ -222,16 +227,20 @@ export default {
     min-width: 0;
   }
 
+  .filter-group label {
+    font-size: 0.813rem;
+  }
+
   .filter-select {
     min-width: 0;
     width: 100%;
-    min-height: 40px;
+    height: 42px;
     font-size: 1rem; /* 16px stops iOS Safari zooming into the select */
   }
 
   .reset-filters-btn {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
   }
 }
 </style>

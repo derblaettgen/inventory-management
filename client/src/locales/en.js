@@ -19,6 +19,15 @@ export default {
   // Dashboard
   dashboard: {
     title: 'Overview',
+    hero: {
+      captionYTD: 'in order revenue this year',
+      captionMTD: 'in order revenue this month',
+      above: 'above your revenue goal',
+      below: 'left to reach your revenue goal',
+      goal: 'Goal',
+      progress: 'Revenue against goal',
+      aria: 'Revenue {revenue} against a goal of {goal}'
+    },
     kpi: {
       title: 'Key Performance Indicators',
       inventoryTurnover: 'Inventory Turnover Rate',
@@ -28,7 +37,9 @@ export default {
       revenueYTD: 'Revenue (Orders) YTD',
       revenueMTD: 'Revenue (Orders) MTD',
       avgProcessingTime: 'Avg Processing Time (Days)',
-      goal: 'Goal'
+      goal: 'Goal',
+      aboveGoal: '{value}% above the {goal} goal',
+      belowGoal: '{value}% below the {goal} goal'
     },
     summary: {
       title: 'Summary'
@@ -40,7 +51,10 @@ export default {
       avgOrderValue: 'Avg Order Value',
       onTimeRate: 'On-Time Rate',
       avgFulfillmentDays: 'Avg Fulfillment (Days)',
-      total: 'Total'
+      total: 'Total',
+      statusTitle: 'Order status',
+      ordersCaption: 'orders',
+      statusAria: '{total} orders: {parts}'
     },
     ordersByMonth: {
       title: 'Orders by Month'
@@ -61,7 +75,12 @@ export default {
       daysDelayed: 'Days Delayed',
       priority: 'Priority',
       unitsShort: 'units short',
-      days: 'days'
+      days: 'days',
+      openCount: 'open shortages',
+      availableOf: '{available} of {needed} available',
+      createPO: 'Create PO',
+      viewPO: 'View PO',
+      viewDetails: 'View shortage details for {name}'
     },
     topProducts: {
       title: 'Top Products by Revenue',
@@ -74,7 +93,15 @@ export default {
       unitsOrdered: 'Units Ordered',
       firstOrder: 'First Order',
       inStock: 'In Stock',
-      lowStock: 'Low Stock'
+      lowStock: 'Low Stock',
+      heading: 'Top products',
+      countLine: 'products ordered',
+      rankBy: 'Rank by',
+      byRevenue: 'Revenue',
+      byUnits: 'Units',
+      shareOfTotal: 'of total',
+      units: 'units',
+      viewDetails: 'View details for {name}'
     }
   },
 
