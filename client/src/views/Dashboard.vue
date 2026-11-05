@@ -1,276 +1,243 @@
 <template>
   <div class="dashboard">
-    <div class="page-header">
-      <h2>{{ t('dashboard.title') }}</h2>
-    </div>
-
     <div v-if="loading" class="loading">{{ t('common.loading') }}</div>
     <div v-else-if="error" class="error">{{ error }}</div>
-    <div v-else>
-      <!-- Key Performance Indicators -->
-      <div class="kpi-section">
-        <h3 class="section-title">{{ t('dashboard.kpi.title') }}</h3>
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-label">{{ t('dashboard.kpi.inventoryTurnover') }}</span>
-            </div>
-            <div class="kpi-value">4.2</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: 4.5 (-6.67%)</div>
-            <div class="kpi-progress-bar">
-              <div class="kpi-progress" style="width: 93.33%"></div>
-            </div>
+    <div v-else class="board">
+      <!-- Hero: order revenue against the revenue goal -->
+      <section class="hero" :aria-label="t('dashboard.hero.progress')">
+        <div class="hero-figure">
+          <div class="hero-value">{{ heroGoal.valueText }}</div>
+          <div class="hero-caption">
+            {{ t(selectedPeriod === 'all' ? 'dashboard.hero.captionYTD' : 'dashboard.hero.captionMTD') }}
           </div>
+        </div>
 
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-label">{{ t('dashboard.kpi.ordersFulfilled') }}</span>
-            </div>
-            <div class="kpi-value">{{ ordersData.fulfilled }}</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ ordersData.goal }} ({{ calculatePercentage(ordersData.fulfilled, ordersData.goal) }}%)</div>
-            <div class="kpi-progress-bar">
-              <div class="kpi-progress" :style="{ width: calculatePercentage(ordersData.fulfilled, ordersData.goal) + '%' }"></div>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-label">{{ t('dashboard.kpi.orderFillRate') }}</span>
-            </div>
-            <div class="kpi-value">{{ fillRate }}%</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: 95% ({{ fillRate - 95 > 0 ? '+' : '' }}{{ (fillRate - 95).toFixed(2) }}%)</div>
-            <div class="kpi-progress-bar">
-              <div class="kpi-progress success" :style="{ width: (fillRate / 95 * 100) + '%' }"></div>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-label">{{ t(selectedPeriod === 'all' ? 'dashboard.kpi.revenueYTD' : 'dashboard.kpi.revenueMTD') }}</span>
-            </div>
-            <div class="kpi-value">{{ formatCurrency(Math.round(summary.total_orders_value), selectedCurrency) }}</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: {{ formatCurrency(revenueGoal, selectedCurrency) }} ({{ summary.total_orders_value > revenueGoal ? '+' : '' }}{{ ((summary.total_orders_value / revenueGoal - 1) * 100).toFixed(1) }}%)</div>
-            <div class="kpi-progress-bar">
-              <div class="kpi-progress" :style="{ width: Math.min((summary.total_orders_value / revenueGoal * 100), 100) + '%' }"></div>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-header">
-              <span class="kpi-label">{{ t('dashboard.kpi.avgProcessingTime') }}</span>
-            </div>
-            <div class="kpi-value">2.8</div>
-            <div class="kpi-goal">{{ t('dashboard.kpi.goal') }}: 3.0 (-6.67%)</div>
-            <div class="kpi-progress-bar">
-              <div class="kpi-progress success" style="width: 93.33%"></div>
+        <div class="hero-goal">
+          <p class="goal-line">
+            <span class="goal-delta" :class="heroGoal.reached ? 'is-good' : 'is-bad'">{{ heroGoal.deltaText }}</span>
+            {{ heroGoal.reached ? t('dashboard.hero.above') : t('dashboard.hero.below') }}
+          </p>
+          <div class="goal-track" role="img" :aria-label="heroGoal.aria">
+            <div class="goal-glow" :style="heroGoal.fillStyle" aria-hidden="true"></div>
+            <div class="goal-fill" :style="heroGoal.fillStyle" aria-hidden="true"></div>
+            <div class="goal-marker" :style="{ left: heroGoal.goalPct + '%' }" aria-hidden="true">
+              <span class="goal-marker-label">{{ t('dashboard.hero.goal') }} {{ heroGoal.goalText }}</span>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Summary Section -->
-      <div class="summary-section">
-        <h3 class="section-title">{{ t('dashboard.summary.title') }}</h3>
-      </div>
-
-      <!-- Charts Grid -->
-      <div class="charts-grid">
-        <!-- Order Health Dashboard -->
-        <div class="card chart-card">
-          <div class="card-header">
-            <h3 class="card-title">{{ t('dashboard.orderHealth.title') }}</h3>
+      <!-- KPIs against their goals -->
+      <section class="kpis" :aria-label="t('dashboard.kpi.title')">
+        <div v-for="k in kpis" :key="k.key" class="kpi">
+          <div class="kpi-label">{{ k.label }}</div>
+          <div class="kpi-row">
+            <span class="kpi-icon" :class="k.good ? 'is-good' : 'is-bad'" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path v-if="k.up" d="M12 19V5M6 11l6-6 6 6" />
+                <path v-else d="M12 5v14M6 13l6 6 6-6" />
+              </svg>
+            </span>
+            <span class="kpi-value">{{ k.valueText }}</span>
           </div>
-          <div class="chart-content">
-            <div class="order-health-container">
-              <!-- Left: Donut Chart -->
-              <div class="order-health-chart">
-                <svg viewBox="0 0 200 200" class="donut-svg-compact">
-                  <circle cx="100" cy="100" r="65" fill="none" stroke="#e2e8f0" stroke-width="25"/>
-                  <circle cx="100" cy="100" r="65" fill="none" stroke="#10b981" stroke-width="25"
-                    :stroke-dasharray="`${getCircleSegment(statusData.delivered)} 408`"
-                    stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
-                  <circle cx="100" cy="100" r="65" fill="none" stroke="#3b82f6" stroke-width="25"
-                    :stroke-dasharray="`${getCircleSegment(statusData.shipped)} 408`"
-                    :stroke-dashoffset="`-${getCircleSegment(statusData.delivered)}`"
-                    transform="rotate(-90 100 100)"/>
-                  <circle cx="100" cy="100" r="65" fill="none" stroke="#f59e0b" stroke-width="25"
-                    :stroke-dasharray="`${getCircleSegment(statusData.processing)} 408`"
-                    :stroke-dashoffset="`-${getCircleSegment(statusData.delivered) + getCircleSegment(statusData.shipped)}`"
-                    transform="rotate(-90 100 100)"/>
-                  <circle cx="100" cy="100" r="65" fill="none" stroke="#ef4444" stroke-width="25"
-                    :stroke-dasharray="`${getCircleSegment(statusData.backordered)} 408`"
-                    :stroke-dashoffset="`-${getCircleSegment(statusData.delivered) + getCircleSegment(statusData.shipped) + getCircleSegment(statusData.processing)}`"
-                    transform="rotate(-90 100 100)"/>
-                  <text x="100" y="90" text-anchor="middle" class="donut-center-label">{{ t('dashboard.orderHealth.total') }}</text>
-                  <text x="100" y="120" text-anchor="middle" class="donut-center-value">{{ orderHealthMetrics.totalOrders }}</text>
+          <div class="kpi-delta" :class="k.good ? 'is-good' : 'is-bad'">{{ k.deltaText }}</div>
+        </div>
+      </section>
+
+      <div class="split">
+        <!-- Top products -->
+        <section class="panel">
+          <header class="panel-head">
+            <h3 class="panel-title">{{ t('dashboard.topProducts.heading') }}</h3>
+            <span class="panel-sub"><strong>{{ allProducts.length }}</strong> {{ t('dashboard.topProducts.countLine') }}</span>
+            <div class="segmented" role="group" :aria-label="t('dashboard.topProducts.rankBy')">
+              <button type="button" :aria-pressed="rankBy === 'revenue'" @click="rankBy = 'revenue'">
+                {{ t('dashboard.topProducts.byRevenue') }}
+              </button>
+              <button type="button" :aria-pressed="rankBy === 'units'" @click="rankBy = 'units'">
+                {{ t('dashboard.topProducts.byUnits') }}
+              </button>
+            </div>
+          </header>
+
+          <p v-if="topProducts.length === 0" class="empty">{{ t('dashboard.inventoryShortages.noData') }}</p>
+          <ul v-else class="product-list">
+            <li v-for="item in topProducts" :key="item.sku" class="product-row" @click="showProductDetail(item)">
+              <span class="tile" :class="'cat-' + categorySlug(item.category)" aria-hidden="true">{{ item.sku.split('-')[0] }}</span>
+              <div class="row-name">
+                <strong>{{ translateProductName(item.name) }}</strong>
+                <span>{{ item.sku }} · {{ translateWarehouse(item.warehouse) }}</span>
+              </div>
+              <div class="row-meta">
+                <span class="pill" :class="{ 'is-low': item.stockLevel === 'Low Stock' }">
+                  <svg class="signal" viewBox="0 0 16 16" aria-hidden="true">
+                    <rect x="2" y="9" width="3" height="5" rx="1" />
+                    <rect x="6.5" y="6" width="3" height="8" rx="1" :class="{ off: item.stockLevel !== 'In Stock' }" />
+                    <rect x="11" y="3" width="3" height="11" rx="1" :class="{ off: item.stockLevel !== 'In Stock' }" />
+                  </svg>
+                  {{ translateStockLevel(item.stockLevel) }}
+                </span>
+                <span class="row-date">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                    <rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" />
+                  </svg>
+                  {{ formatDate(item.firstOrderDate) }}
+                </span>
+              </div>
+              <div class="row-share">
+                <svg class="ring" viewBox="0 0 36 36" aria-hidden="true">
+                  <circle cx="18" cy="18" r="14" class="ring-track" />
+                  <circle cx="18" cy="18" r="14" class="ring-value" :stroke-dasharray="`${item.share * 0.88} 88`" />
                 </svg>
-                <div class="donut-legend-compact">
-                  <div class="legend-item-compact"><span class="legend-dot" style="background: #10b981"></span>{{ t('status.delivered') }}</div>
-                  <div class="legend-item-compact"><span class="legend-dot" style="background: #3b82f6"></span>{{ t('status.shipped') }}</div>
-                  <div class="legend-item-compact"><span class="legend-dot" style="background: #f59e0b"></span>{{ t('status.processing') }}</div>
-                  <div class="legend-item-compact"><span class="legend-dot" style="background: #ef4444"></span>{{ t('status.backordered') }}</div>
+                <div class="share-text">
+                  <strong>{{ item.share.toFixed(1) }}%</strong>
+                  <span>{{ rankBy === 'units' ? item.unitsOrdered.toLocaleString() + ' ' + t('dashboard.topProducts.units') : formatCurrencyCompact(item.revenue, selectedCurrency) }}</span>
                 </div>
               </div>
+              <button
+                type="button"
+                class="row-menu"
+                :aria-label="t('dashboard.topProducts.viewDetails', { name: translateProductName(item.name) })"
+                @click.stop="showProductDetail(item)"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" />
+                </svg>
+              </button>
+            </li>
+          </ul>
+        </section>
 
-              <!-- Right: Health Metrics -->
-              <div class="order-health-metrics">
-                <div class="health-metric">
-                  <div class="health-metric-label">{{ t('dashboard.orderHealth.revenue') }}</div>
-                  <div class="health-metric-value">{{ formatCurrency(orderHealthMetrics.totalValue, selectedCurrency) }}</div>
-                </div>
-                <div class="health-metric">
-                  <div class="health-metric-label">{{ t('dashboard.orderHealth.avgOrderValue') }}</div>
-                  <div class="health-metric-value">{{ formatCurrency(orderHealthMetrics.avgOrderValue, selectedCurrency) }}</div>
-                </div>
-                <div class="health-metric">
-                  <div class="health-metric-label">{{ t('dashboard.orderHealth.onTimeRate') }}</div>
-                  <div class="health-metric-value" :class="{ 'metric-good': orderHealthMetrics.onTimeRate >= 90, 'metric-warning': orderHealthMetrics.onTimeRate < 90 && orderHealthMetrics.onTimeRate >= 75, 'metric-bad': orderHealthMetrics.onTimeRate < 75 }">
-                    {{ orderHealthMetrics.onTimeRate.toFixed(1) }}%
-                  </div>
-                </div>
-                <div class="health-metric">
-                  <div class="health-metric-label">{{ t('dashboard.orderHealth.avgFulfillmentDays') }}</div>
-                  <div class="health-metric-value">{{ orderHealthMetrics.avgFulfillmentDays.toFixed(1) }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Inventory by Category -->
-        <div class="card chart-card">
-          <div class="card-header">
-            <h3 class="card-title">{{ t('dashboard.inventoryValue.title') }}</h3>
-          </div>
-          <div class="chart-content">
-            <div class="horizontal-bar-chart" v-if="categoryData.length > 0">
-              <div v-for="cat in categoryData" :key="cat.name" class="h-bar-item">
-                <div class="h-bar-label">{{ translateCategory(cat.name) }}</div>
-                <div class="h-bar-container">
-                  <div class="h-bar" :style="{ width: (cat.value / maxCategoryValue * 100) + '%', background: cat.color }">
-                    <span class="h-bar-value">{{ selectedCurrency === 'JPY' ? formatCurrency(cat.value, selectedCurrency) : `$${(cat.value / 1000).toFixed(1)}K` }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div v-else class="no-data">{{ t('dashboard.inventoryShortages.noData') }}</div>
-          </div>
-        </div>
-
-        <!-- Inventory Shortages -->
-        <div class="card chart-card full-width">
-          <div class="card-header">
-            <h3 class="card-title">{{ t('dashboard.inventoryShortages.title') }} ({{ backlogItems.length }})</h3>
-          </div>
-          <div v-if="backlogItems.length === 0" class="no-backlog">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="success-icon">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+        <!-- Order status flower: petal size follows each status's share -->
+        <section class="panel panel-side">
+          <header class="panel-head">
+            <h3 class="panel-title">{{ t('dashboard.orderHealth.statusTitle') }}</h3>
+          </header>
+          <div class="flower" role="img" :aria-label="statusAria">
+            <svg viewBox="0 0 300 300" aria-hidden="true">
+              <defs>
+                <clipPath id="flower-clip"><circle cx="150" cy="150" r="140" /></clipPath>
+                <filter id="flower-blur" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="18" />
+                </filter>
+              </defs>
+              <g clip-path="url(#flower-clip)">
+                <rect width="300" height="300" fill="#f6f6f8" />
+                <g filter="url(#flower-blur)">
+                  <circle v-for="s in statusShares" :key="s.key" :cx="s.cx" :cy="s.cy" :r="s.r" :fill="s.color" />
+                </g>
+                <g stroke="#fff" stroke-width="5">
+                  <line x1="150" y1="150" x2="0" y2="0" />
+                  <line x1="150" y1="150" x2="300" y2="0" />
+                  <line x1="150" y1="150" x2="300" y2="300" />
+                  <line x1="150" y1="150" x2="0" y2="300" />
+                </g>
+              </g>
+              <circle cx="150" cy="150" r="38" fill="#fff" />
             </svg>
-            <p class="no-backlog-text">{{ t('dashboard.inventoryShortages.noShortages') }}</p>
+            <div class="flower-center" aria-hidden="true">
+              <strong>{{ totalOrders }}</strong>
+              <span>{{ t('dashboard.orderHealth.ordersCaption') }}</span>
+            </div>
+            <div v-for="s in statusShares" :key="s.key" class="flower-label" :class="'pos-' + s.pos" aria-hidden="true">
+              <strong>{{ s.pct }}%</strong>
+              <span>{{ s.label }}</span>
+            </div>
           </div>
-          <div v-else class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>{{ t('dashboard.inventoryShortages.orderId') }}</th>
-                  <th>{{ t('dashboard.inventoryShortages.sku') }}</th>
-                  <th>{{ t('dashboard.inventoryShortages.itemName') }}</th>
-                  <th>{{ t('dashboard.inventoryShortages.quantityNeeded') }}</th>
-                  <th>{{ t('dashboard.inventoryShortages.quantityAvailable') }}</th>
-                  <th>{{ t('dashboard.inventoryShortages.shortage') }}</th>
-                  <th>{{ t('dashboard.inventoryShortages.daysDelayed') }}</th>
-                  <th>{{ t('dashboard.inventoryShortages.priority') }}</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="item in backlogItems"
-                  :key="item.id"
-                >
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;"><strong>{{ item.order_id }}</strong></td>
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;"><strong>{{ item.item_sku }}</strong></td>
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;">{{ translateProductName(item.item_name) }}</td>
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;">{{ item.quantity_needed }}</td>
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;">{{ item.quantity_available }}</td>
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;">
-                    <span class="badge danger">
-                      {{ Math.abs(item.quantity_needed - item.quantity_available) }} {{ t('dashboard.inventoryShortages.unitsShort') }}
-                    </span>
-                  </td>
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;">
-                    <span :style="{ color: item.days_delayed > 7 ? '#ef4444' : '#f59e0b', fontWeight: 600 }">
-                      {{ item.days_delayed }} {{ t('dashboard.inventoryShortages.days') }}
-                    </span>
-                  </td>
-                  <td @click="showBacklogDetail(item)" style="cursor: pointer;">
-                    <span :class="['badge', item.priority]">
-                      {{ translatePriority(item.priority) }}
-                    </span>
-                  </td>
-                  <td>
-                    <button
-                      v-if="!item.purchase_order_id"
-                      @click.stop="openPOModal(item)"
-                      class="po-button create"
-                    >
-                      Create PO
-                    </button>
-                    <button
-                      v-else
-                      @click.stop="viewPO(item)"
-                      class="po-button view"
-                    >
-                      View PO
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          <dl class="side-stats">
+            <div>
+              <dt>{{ t('dashboard.orderHealth.avgOrderValue') }}</dt>
+              <dd>{{ formatCurrencyCompact(orderHealthMetrics.avgOrderValue, selectedCurrency) }}</dd>
+            </div>
+            <div>
+              <dt>{{ t('dashboard.orderHealth.onTimeRate') }}</dt>
+              <dd :class="{ 'is-bad': orderHealthMetrics.onTimeRate < 75 }">{{ orderHealthMetrics.onTimeRate.toFixed(1) }}%</dd>
+            </div>
+            <div>
+              <dt>{{ t('dashboard.orderHealth.avgFulfillmentDays') }}</dt>
+              <dd>{{ orderHealthMetrics.avgFulfillmentDays.toFixed(1) }}</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
 
-        <!-- Top Products Table -->
-        <div class="card chart-card full-width">
-          <div class="card-header">
-            <h3 class="card-title">{{ t('dashboard.topProducts.title') }}</h3>
+      <div class="split">
+        <!-- Inventory shortages -->
+        <section class="panel">
+          <header class="panel-head">
+            <h3 class="panel-title">{{ t('dashboard.inventoryShortages.title') }}</h3>
+            <span class="panel-sub"><strong>{{ backlogItems.length }}</strong> {{ t('dashboard.inventoryShortages.openCount') }}</span>
+          </header>
+
+          <div v-if="backlogItems.length === 0" class="empty empty-good">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" /><path d="M8 12l3 3 5-6" />
+            </svg>
+            {{ t('dashboard.inventoryShortages.noShortages') }}
           </div>
-          <div class="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>{{ t('dashboard.topProducts.product') }}</th>
-                  <th>{{ t('dashboard.topProducts.sku') }}</th>
-                  <th>{{ t('dashboard.topProducts.category') }}</th>
-                  <th>{{ t('dashboard.topProducts.unitsOrdered') }}</th>
-                  <th>{{ t('dashboard.topProducts.revenue') }}</th>
-                  <th>{{ t('dashboard.topProducts.firstOrder') }}</th>
-                  <th>{{ t('dashboard.topProducts.stockStatus') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="item in topProducts"
-                  :key="item.sku"
-                  class="clickable-row"
-                  @click="showProductDetail(item)"
-                >
-                  <td><strong>{{ translateProductName(item.name) }}</strong></td>
-                  <td>{{ item.sku }}</td>
-                  <td>{{ translateCategory(item.category) }}</td>
-                  <td>{{ item.unitsOrdered }}</td>
-                  <td><strong>{{ formatCurrency(item.revenue, selectedCurrency) }}</strong></td>
-                  <td>{{ formatDate(item.firstOrderDate) }}</td>
-                  <td>
-                    <span :class="['badge', getStockBadge(item.stockLevel)]">
-                      {{ translateStockLevel(item.stockLevel) }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+          <ul v-else class="short-list">
+            <li v-for="item in backlogItems" :key="item.id" class="short-row" @click="showBacklogDetail(item)">
+              <div class="row-name">
+                <button
+                  type="button"
+                  class="row-link"
+                  :aria-label="t('dashboard.inventoryShortages.viewDetails', { name: translateProductName(item.item_name) })"
+                  @click.stop="showBacklogDetail(item)"
+                >{{ translateProductName(item.item_name) }}</button>
+                <span>{{ item.order_id }} · {{ item.item_sku }}</span>
+              </div>
+              <div class="short-qty">
+                <span>{{ t('dashboard.inventoryShortages.availableOf', { available: item.quantity_available, needed: item.quantity_needed }) }}</span>
+                <div class="mini-track" aria-hidden="true">
+                  <div class="mini-bar" :style="{ width: Math.min(item.quantity_available / item.quantity_needed * 100, 100) + '%' }"></div>
+                </div>
+              </div>
+              <div class="short-tags">
+                <span class="badge danger">
+                  {{ Math.abs(item.quantity_needed - item.quantity_available) }} {{ t('dashboard.inventoryShortages.unitsShort') }}
+                </span>
+                <span class="short-delay" :class="{ late: item.days_delayed > 7 }">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" />
+                  </svg>
+                  {{ item.days_delayed }} {{ t('dashboard.inventoryShortages.days') }}
+                </span>
+                <span :class="['badge', item.priority]">{{ translatePriority(item.priority) }}</span>
+              </div>
+              <button
+                v-if="!item.purchase_order_id"
+                type="button"
+                class="po-button"
+                @click.stop="openPOModal(item)"
+              >{{ t('dashboard.inventoryShortages.createPO') }}</button>
+              <button
+                v-else
+                type="button"
+                class="po-button is-view"
+                @click.stop="viewPO(item)"
+              >{{ t('dashboard.inventoryShortages.viewPO') }}</button>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Inventory value by category -->
+        <section class="panel panel-side">
+          <header class="panel-head">
+            <h3 class="panel-title">{{ t('dashboard.inventoryValue.title') }}</h3>
+          </header>
+          <p v-if="categoryRows.length === 0" class="empty">{{ t('dashboard.inventoryShortages.noData') }}</p>
+          <ul v-else class="cat-list">
+            <li v-for="cat in categoryRows" :key="cat.category">
+              <div class="cat-top">
+                <span>{{ translateCategory(cat.name) }}</span>
+                <strong>{{ formatCurrencyCompact(cat.value, selectedCurrency) }}</strong>
+              </div>
+              <div class="cat-track" aria-hidden="true">
+                <div class="cat-bar" :class="'cat-' + cat.category.replace(/\s+/g, '-')" :style="{ width: (cat.value / maxCategoryValue * 100) + '%' }"></div>
+              </div>
+            </li>
+          </ul>
+        </section>
       </div>
     </div>
 
@@ -301,7 +268,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { api } from '../api'
 import { useFilters } from '../composables/useFilters'
 import { useI18n } from '../composables/useI18n'
-import { formatCurrency } from '../utils/currency'
+import { formatCurrency, formatCurrencyCompact } from '../utils/currency'
 import ProductDetailModal from '../components/ProductDetailModal.vue'
 import BacklogDetailModal from '../components/BacklogDetailModal.vue'
 
@@ -312,7 +279,7 @@ export default {
     BacklogDetailModal,
   },
   setup() {
-    const { t, currentCurrency, translateProductName, translateWarehouse } = useI18n()
+    const { t, currentCurrency, currentLocale, translateProductName, translateWarehouse } = useI18n()
     const loading = ref(true)
     const error = ref(null)
     const summary = ref({})
@@ -349,11 +316,63 @@ export default {
       return monthlyGoal // $800,000 for a single month
     })
 
-    const revenueGoalDisplay = computed(() => {
-      if (revenueGoal.value >= 1000000) {
-        return `$${(revenueGoal.value / 1000000).toFixed(1)}M`
+    // Hero bar: the track is scaled to whichever is larger (revenue or goal) plus
+    // headroom, so the goal marker stays visible even when revenue overshoots it.
+    // The gradient runs red -> green up to the goal position, then stays green.
+    const heroGoal = computed(() => {
+      const revenue = summary.value.total_orders_value || 0
+      const goal = revenueGoal.value
+      const ratio = goal > 0 ? revenue / goal : 0
+      const scaleMax = Math.max(revenue, goal) * 1.06 || 1
+      const fillPct = Math.max((revenue / scaleMax) * 100, 2)
+      const goalPct = (goal / scaleMax) * 100
+      const reached = ratio >= 1
+      const deltaPct = Math.round(Math.abs(ratio - 1) * 100)
+      const currency = currentCurrency.value
+      return {
+        reached,
+        goalPct,
+        valueText: formatCurrencyCompact(revenue, currency),
+        goalText: formatCurrencyCompact(goal, currency),
+        deltaText: (reached ? '+' : '') + deltaPct + '%',
+        aria: t('dashboard.hero.aria', {
+          revenue: formatCurrency(revenue, currency),
+          goal: formatCurrency(goal, currency)
+        }),
+        fillStyle: {
+          width: fillPct + '%',
+          // size the gradient to the whole track so colours map to absolute positions
+          backgroundSize: (10000 / fillPct) + '% 100%',
+          backgroundImage: `linear-gradient(90deg, #ff9f9f 0%, #ffd37f ${goalPct * 0.5}%, #a9e690 ${goalPct}%, #8ddf97 100%)`
+        }
       }
-      return `$${(revenueGoal.value / 1000).toFixed(0)}K`
+    })
+
+    // KPI targets come from the business goals; for processing time lower is better
+    const kpis = computed(() => {
+      const make = (key, label, valueText, delta, goalText, lowerIsBetter = false) => {
+        const up = delta >= 0
+        return {
+          key,
+          label,
+          valueText,
+          up,
+          good: lowerIsBetter ? delta <= 0 : delta >= 0,
+          deltaText: t(up ? 'dashboard.kpi.aboveGoal' : 'dashboard.kpi.belowGoal', {
+            value: Math.abs(delta).toFixed(1),
+            goal: goalText
+          })
+        }
+      }
+      const fulfilled = ordersData.value.fulfilled
+      const fulfilledGoal = ordersData.value.goal
+      return [
+        make('fulfilled', t('dashboard.kpi.ordersFulfilled'), String(fulfilled), (fulfilled / fulfilledGoal - 1) * 100, String(fulfilledGoal)),
+        // fill rate delta is in percentage points, as before
+        make('fillRate', t('dashboard.kpi.orderFillRate'), fillRate.value + '%', fillRate.value - 95, '95%'),
+        make('turnover', t('dashboard.kpi.inventoryTurnover'), '4.2', (4.2 / 4.5 - 1) * 100, '4.5'),
+        make('processing', t('dashboard.kpi.avgProcessingTime'), '2.8', (2.8 / 3.0 - 1) * 100, '3.0', true)
+      ]
     })
 
     const statusData = computed(() => {
@@ -364,6 +383,43 @@ export default {
       })
       return counts
     })
+
+    const totalOrders = computed(() => {
+      return statusData.value.delivered + statusData.value.shipped +
+             statusData.value.processing + statusData.value.backordered
+    })
+
+    // Flower petals: one per status, placed top/right/bottom/left; the blurred
+    // blob's radius grows with the square root of its share so area tracks count.
+    const statusShares = computed(() => {
+      const defs = [
+        ['delivered', 'top', '#6fe3a0', 150, 66],
+        ['shipped', 'right', '#d5ec7a', 234, 150],
+        ['processing', 'bottom', '#fdc37b', 150, 234],
+        ['backordered', 'left', '#fb9494', 66, 150]
+      ]
+      const total = totalOrders.value
+      const max = Math.max(1, ...defs.map(([key]) => statusData.value[key]))
+      return defs.map(([key, pos, color, cx, cy]) => {
+        const count = statusData.value[key]
+        return {
+          key,
+          pos,
+          color,
+          cx,
+          cy,
+          count,
+          pct: total > 0 ? Math.round((count / total) * 100) : 0,
+          r: count > 0 ? 30 + 62 * Math.sqrt(count / max) : 0,
+          label: t('status.' + key)
+        }
+      })
+    })
+
+    const statusAria = computed(() => t('dashboard.orderHealth.statusAria', {
+      total: totalOrders.value,
+      parts: statusShares.value.map(s => `${s.label} ${s.pct}%`).join(', ')
+    }))
 
     const orderHealthMetrics = computed(() => {
       const totalOrders = allOrders.value.length
@@ -388,8 +444,10 @@ export default {
           const orderDate = new Date(o.order_date)
           const deliveryDate = new Date(o.actual_delivery)
           const days = Math.round((deliveryDate - orderDate) / (1000 * 60 * 60 * 24))
-          totalDays += days
-          countWithDates++
+          if (!isNaN(days)) {
+            totalDays += days
+            countWithDates++
+          }
         }
       })
       const avgFulfillmentDays = countWithDates > 0 ? totalDays / countWithDates : 0
@@ -407,9 +465,6 @@ export default {
       // Group inventory by category and calculate values
       // Filter inventory items to only include those with orders in the selected period
       const categoryMap = {}
-
-      // Use a single neutral slate/gray color for all categories
-      const singleColor = '#64748b' // Neutral slate gray color
 
       // Get SKUs from orders in the filtered time period
       const orderedSkus = new Set()
@@ -433,7 +488,6 @@ export default {
           categoryMap[cat] = {
             name: item.category,
             value: 0,
-            color: singleColor,
             category: cat,
             count: 0
           }
@@ -445,49 +499,15 @@ export default {
       return Object.values(categoryMap)
     })
 
+    const categoryRows = computed(() => [...categoryData.value].sort((a, b) => b.value - a.value))
+
     const maxCategoryValue = computed(() => {
       if (categoryData.value.length === 0) return 1
       return Math.max(...categoryData.value.map(c => c.value))
     })
 
-    const orderTrendData = computed(() => {
-      // Group orders by month from the actual data
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-      // Initialize all months with 0 orders
-      const monthMap = {}
-      monthNames.forEach(month => {
-        monthMap[month] = { month, orders: 0 }
-      })
-
-      // Count orders for each month
-      if (Array.isArray(allOrders.value)) {
-        allOrders.value.forEach(order => {
-          if (order && order.order_date) {
-            const date = new Date(order.order_date)
-            const monthIndex = date.getMonth()
-            // Check if monthIndex is valid (0-11)
-            if (!isNaN(monthIndex) && monthIndex >= 0 && monthIndex <= 11) {
-              const monthName = monthNames[monthIndex]
-              monthMap[monthName].orders++
-            }
-          }
-        })
-      }
-
-      // Return all months in order
-      return monthNames.map(month => monthMap[month])
-    })
-
-    const maxOrderCount = computed(() => {
-      if (orderTrendData.value.length === 0) return 10
-      const max = Math.max(...orderTrendData.value.map(d => d.orders))
-      // Round up to nearest 10 for cleaner axis, minimum 10
-      return Math.max(10, Math.ceil(max / 10) * 10)
-    })
-
-    const topProducts = computed(() => {
-      // Calculate top products from filtered order data
+    // Every product ordered under the current filters
+    const allProducts = computed(() => {
       const productMap = {}
 
       // allOrders is already filtered by API based on: month, warehouse, category, status
@@ -517,11 +537,9 @@ export default {
                 stockLevel: invItem ? (invItem.quantity_on_hand > invItem.reorder_point ? 'In Stock' : 'Low Stock') : 'Unknown',
                 firstOrderDate: order.order_date
               }
-            } else {
-              // Update to EARLIEST order date (to show January at top when selecting All Months)
-              if (order.order_date && (!productMap[sku].firstOrderDate || order.order_date < productMap[sku].firstOrderDate)) {
-                productMap[sku].firstOrderDate = order.order_date
-              }
+            } else if (order.order_date && (!productMap[sku].firstOrderDate || order.order_date < productMap[sku].firstOrderDate)) {
+              // Keep the EARLIEST order date
+              productMap[sku].firstOrderDate = order.order_date
             }
             productMap[sku].unitsOrdered += item.quantity
             productMap[sku].revenue += item.quantity * item.unit_price
@@ -529,20 +547,18 @@ export default {
         }
       })
 
-      // Convert to array, sort by first order date (earliest first = January at top), then by revenue, and take top 12
       return Object.values(productMap)
-        .sort((a, b) => {
-          // Sort by first order date (earliest first)
-          // This ensures products first ordered in January appear before those first ordered in December
-          const dateA = new Date(a.firstOrderDate || '9999-12-31')
-          const dateB = new Date(b.firstOrderDate || '9999-12-31')
-          if (dateA.getTime() !== dateB.getTime()) {
-            return dateA.getTime() - dateB.getTime() // Earlier dates come first
-          }
-          // If dates are equal, sort by revenue (highest first)
-          return b.revenue - a.revenue
-        })
-        .slice(0, 12)
+    })
+
+    // Top list ranked by the selected measure; share is against all ordered products
+    const rankBy = ref('revenue')
+    const topProducts = computed(() => {
+      const measure = rankBy.value === 'units' ? 'unitsOrdered' : 'revenue'
+      const total = allProducts.value.reduce((sum, p) => sum + p[measure], 0)
+      return [...allProducts.value]
+        .sort((a, b) => b[measure] - a[measure])
+        .slice(0, 8)
+        .map(p => ({ ...p, share: total > 0 ? (p[measure] / total) * 100 : 0 }))
     })
 
     const allBacklogItems = ref([])
@@ -581,25 +597,7 @@ export default {
       }
     }
 
-    const calculatePercentage = (value, goal) => {
-      return ((value / goal) * 100).toFixed(2)
-    }
-
-    // Compute total orders once for efficiency
-    const totalOrders = computed(() => {
-      return statusData.value.delivered + statusData.value.shipped +
-             statusData.value.processing + statusData.value.backordered
-    })
-
-    const getCircleSegment = (value) => {
-      return totalOrders.value > 0 ? (value / totalOrders.value) * 440 : 0
-    }
-
-    const getStockBadge = (level) => {
-      if (level === 'In Stock') return 'success'
-      if (level === 'Low Stock') return 'warning'
-      return 'danger'
-    }
+    const categorySlug = (category) => (category || '').toLowerCase().replace(/\s+/g, '-')
 
     const translateCategory = (category) => {
       const categoryMap = {
@@ -634,9 +632,9 @@ export default {
 
     const formatDate = (dateString) => {
       if (!dateString) return '-'
-      const { currentLocale } = useI18n()
-      const locale = currentLocale.value === 'ja' ? 'ja-JP' : 'en-US'
       const date = new Date(dateString)
+      if (isNaN(date.getTime())) return '-'
+      const locale = currentLocale.value === 'ja' ? 'ja-JP' : 'en-US'
       return date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
     }
 
@@ -683,38 +681,34 @@ export default {
       t,
       loading,
       error,
-      summary,
-      ordersData,
-      fillRate,
-      statusData,
+      selectedPeriod,
+      selectedCurrency: currentCurrency,
+      heroGoal,
+      kpis,
+      totalOrders,
+      statusShares,
+      statusAria,
       orderHealthMetrics,
-      categoryData,
+      categoryRows,
       maxCategoryValue,
-      orderTrendData,
-      maxOrderCount,
+      allProducts,
+      rankBy,
       topProducts,
       backlogItems,
-      calculatePercentage,
-      getCircleSegment,
-      getStockBadge,
+      categorySlug,
       translateCategory,
       translateStockLevel,
       translatePriority,
+      translateProductName,
+      translateWarehouse,
       formatDate,
-      revenueGoal,
-      revenueGoalDisplay,
+      formatCurrencyCompact,
       showProductModal,
       selectedProduct,
       showProductDetail,
       showBacklogModal,
       selectedBacklogItem,
       showBacklogDetail,
-      selectedPeriod,
-      selectedCurrency: currentCurrency,
-      formatCurrency,
-      Math,
-      translateProductName,
-      translateWarehouse,
       showPOModal,
       selectedBacklogForPO,
       poModalMode,
@@ -727,553 +721,870 @@ export default {
 </script>
 
 <style scoped>
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+.board {
+  --gap-x: 2.5rem;
 }
 
-.header-meta {
-  font-size: 0.813rem;
-  color: #64748b;
+.empty {
+  color: var(--muted);
+  padding: 2rem 0;
 }
 
-.kpi-section {
-  margin-bottom: 1.5rem;
-}
-
-.section-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 1rem;
-}
-
-.kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1rem;
-}
-
-.kpi-card {
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 1rem;
-}
-
-.kpi-header {
-  margin-bottom: 0.75rem;
-}
-
-.kpi-label {
-  font-size: 0.813rem;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-}
-
-.kpi-value {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.025em;
-}
-
-.kpi-goal {
-  font-size: 0.813rem;
-  color: #64748b;
-  margin-bottom: 0.75rem;
-}
-
-.kpi-progress-bar {
-  width: 100%;
-  height: 6px;
-  background: #f1f5f9;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.kpi-progress {
-  height: 100%;
-  background: #3b82f6;
-  border-radius: 3px;
-  transition: width 0.6s ease;
-}
-
-.kpi-progress.success {
-  background: #10b981;
-}
-
-.charts-grid {
-  display: grid;
-  /* minmax(0, 1fr) lets columns shrink below their content width instead of overflowing */
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
-}
-
-.chart-card.full-width {
-  grid-column: 1 / -1;
-}
-
-.chart-content {
-  padding: 1rem;
-}
-
-.donut-chart {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3rem;
-}
-
-.donut-svg {
-  width: 200px;
-  height: 200px;
-}
-
-.donut-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.legend-item {
+.empty-good {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  font-size: 0.875rem;
-  color: #475569;
+  color: var(--good);
 }
 
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-
-/* Order Health Dashboard Styles */
-.order-health-container {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 1.5rem;
-  align-items: center;
-  padding: 1rem;
-  min-height: 240px;
-}
-
-.order-health-chart {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 0 1rem;
-}
-
-.donut-svg-compact {
-  width: 200px;
-  height: 200px;
-}
-
-.donut-center-label {
-  font-size: 12px;
-  fill: #64748b;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.donut-center-value {
-  font-size: 36px;
-  fill: #0f172a;
-  font-weight: 700;
-}
-
-.donut-legend-compact {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.625rem 1.25rem;
-}
-
-.legend-item-compact {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #475569;
-  font-weight: 500;
-}
-
-.order-health-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  justify-content: center;
-  align-items: center;
-}
-
-.health-metric {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  text-align: center;
-  width: 100%;
-}
-
-.health-metric-label {
-  font-size: 0.688rem;
-  color: #64748b;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.health-metric-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.025em;
-}
-
-.metric-good {
-  color: #10b981;
-}
-
-.metric-warning {
-  color: #f59e0b;
-}
-
-.metric-bad {
-  color: #ef4444;
-}
-
-.horizontal-bar-chart {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding: 0 1rem;
-}
-
-.h-bar-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.h-bar-label {
-  width: 120px;
-  min-width: 120px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #475569;
+.empty-good svg {
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
 }
 
-.h-bar-container {
-  flex: 1;
-  height: 32px;
-  background: #f8fafc;
-  border-radius: 6px;
+.is-good { color: var(--good); }
+.is-bad { color: var(--bad); }
+
+/* ---------- Hero ---------- */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 2rem 4rem;
+  padding: 0.5rem 0 3rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.hero-value {
+  font-size: clamp(3.75rem, 7.5vw, 7.5rem);
+  font-weight: 500;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.hero-caption {
+  margin-top: 0.875rem;
+  font-size: 1.125rem;
+  color: var(--muted);
+}
+
+.goal-line {
+  font-size: 1.125rem;
+  color: var(--muted);
+  margin-bottom: 2.25rem; /* room for the goal label above the marker */
+}
+
+.goal-delta {
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-right: 0.375rem;
+}
+
+.goal-track {
+  position: relative;
+  height: 64px;
+  border-radius: 10px;
+  background: var(--fill);
+}
+
+.goal-fill,
+.goal-glow {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 10px;
+  background-repeat: no-repeat;
+  transform-origin: left center;
+  animation: goal-grow 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* soft coloured light under the bar, as in the reference */
+.goal-glow {
+  top: 18px;
+  bottom: -18px;
+  filter: blur(22px);
+  opacity: 0.55;
+}
+
+.goal-marker {
+  position: absolute;
+  top: -10px;
+  bottom: -10px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 3px;
+  background: var(--ink);
+  animation: fade-in 0.4s 0.7s ease-out both;
+}
+
+.goal-marker-label {
+  position: absolute;
+  bottom: calc(100% + 0.375rem);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+@keyframes goal-grow {
+  from { transform: scaleX(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
+/* ---------- KPI row ---------- */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+
+.kpi {
+  padding: 2rem 2rem 2rem 0;
+}
+
+.kpi + .kpi {
+  padding-left: 2rem;
+  border-left: 1px solid var(--line);
+}
+
+.kpi-label {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--ink-2);
+  margin-bottom: 0.875rem;
+}
+
+.kpi-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.kpi-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.kpi-icon.is-good { background: var(--good-solid); color: #fff; }
+.kpi-icon.is-bad { background: var(--bad-solid); color: #fff; }
+
+.kpi-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.kpi-value {
+  font-size: 2.5rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-delta {
+  margin-top: 0.5rem;
+  font-size: 0.938rem;
+}
+
+/* ---------- Split panels ---------- */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+
+.split:last-child {
+  border-bottom: none;
+}
+
+.panel {
+  padding: 2.25rem var(--gap-x) 2.25rem 0;
+  min-width: 0;
+}
+
+.panel-side {
+  padding: 2.25rem 0 2.25rem var(--gap-x);
+  border-left: 1px solid var(--line);
+}
+
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.panel-title {
+  font-size: 1.5rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.panel-sub {
+  padding-left: 1rem;
+  border-left: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.panel-sub strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.segmented {
+  margin-left: auto;
+  display: inline-flex;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.segmented button {
+  height: 36px;
+  padding: 0 1.25rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.938rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.segmented button:hover {
+  color: var(--ink);
+}
+
+.segmented button[aria-pressed='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.segmented button:focus-visible,
+.row-menu:focus-visible,
+.row-link:focus-visible,
+.po-button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* ---------- Product list ---------- */
+.product-list,
+.short-list,
+.cat-list {
+  list-style: none;
+}
+
+.product-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 1.1fr) 40px;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.875rem 0;
+  cursor: pointer;
+}
+
+.product-row + .product-row {
+  border-top: 1px solid var(--line);
+}
+
+.product-row:hover .row-name strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--muted-2);
+}
+
+.tile {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  background: var(--fill);
+  color: var(--ink-2);
+}
+
+/* one quiet tint per category, shared with the category bars */
+.cat-circuit-boards { background: #eef0ff; color: #4338ca; }
+.cat-sensors { background: #e8f7ec; color: #15803d; }
+.cat-actuators { background: #fef3e2; color: #b45309; }
+.cat-controllers { background: #f5ecff; color: #7e22ce; }
+.cat-power-supplies { background: #fdecea; color: #c2410c; }
+
+.row-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.row-name strong,
+.row-link {
+  font-size: 1.063rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-name span {
+  font-size: 0.875rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-meta {
+  display: contents; /* pill and date are their own grid columns on wide screens */
+}
+
+.pill {
+  justify-self: start;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 34px;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 0.938rem;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.pill.is-low {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.signal {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.signal .off {
+  opacity: 0.25;
+}
+
+.row-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ink-2);
+  font-size: 0.938rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.row-date svg {
+  width: 17px;
+  height: 17px;
+  color: var(--muted-2);
+}
+
+.row-share {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ring {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+}
+
+.ring circle {
+  fill: none;
+  stroke-width: 4.5;
+}
+
+.ring-track { stroke: var(--ring-track); }
+
+.ring-value {
+  stroke: var(--ring);
+  stroke-linecap: round;
+}
+
+.share-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.share-text strong {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.share-text span {
+  font-size: 0.813rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.row-menu {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.row-menu:hover {
+  background: var(--fill);
+}
+
+.row-menu svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---------- Order status flower ---------- */
+.flower {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin: 0.5rem auto 0;
+  aspect-ratio: 1;
+}
+
+.flower svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.flower-center,
+.flower-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.flower-center {
+  left: 50%;
+  top: 50%;
+}
+
+.flower-center strong {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.flower-center span {
+  font-size: 0.688rem;
+  color: var(--muted);
+}
+
+.flower-label strong {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.flower-label span {
+  font-size: 0.875rem;
+  color: var(--ink-2);
+}
+
+.pos-top { left: 50%; top: 22%; }
+.pos-right { left: 78%; top: 50%; }
+.pos-bottom { left: 50%; top: 78%; }
+.pos-left { left: 22%; top: 50%; }
+
+.side-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 2rem;
+  border-top: 1px solid var(--line);
+}
+
+.side-stats div {
+  padding: 1.125rem 0.75rem 0 0;
+}
+
+.side-stats div + div {
+  padding-left: 0.875rem;
+  border-left: 1px solid var(--line);
+}
+
+.side-stats dt {
+  font-size: 0.813rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.side-stats dd {
+  font-size: 1.375rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Shortages ---------- */
+.short-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.3fr) minmax(0, 2fr) auto;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1rem 0;
+  cursor: pointer;
+}
+
+.short-row + .short-row {
+  border-top: 1px solid var(--line);
+}
+
+.row-link {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--muted-2);
+}
+
+.short-qty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bad-soft);
   overflow: hidden;
 }
 
-.h-bar {
+.mini-bar {
   height: 100%;
+  border-radius: 999px;
+  background: var(--ink);
+}
+
+.short-tags {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  padding-right: 0.75rem;
-  transition: width 0.6s ease;
+  gap: 0.5rem 0.875rem;
 }
 
-.h-bar-value {
-  font-size: 0.813rem;
-  font-weight: 700;
-  color: white;
-}
-
-.line-chart {
-  display: flex;
-  gap: 1.5rem;
-  height: 280px;
-}
-
-.line-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding-right: 1rem;
-  font-size: 0.75rem;
-  color: #94a3b8;
-  border-right: 1px solid #e2e8f0;
-}
-
-.line-chart-area {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  gap: 0.5rem;
-}
-
-.line-bar-group {
-  display: flex;
-  flex-direction: column;
+.short-delay {
+  display: inline-flex;
   align-items: center;
-  flex: 1;
-  max-width: 80px;
-  gap: 0.5rem;
-}
-
-.line-bar-wrapper {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-}
-
-.line-bar {
-  width: 100%;
-  max-width: 60px;
-  min-height: 8px;
-  background: #3b82f6;
-  border-radius: 6px 6px 0 0;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-}
-
-.line-bar.empty-bar {
-  background: #e2e8f0;
-  box-shadow: none;
-  min-height: 4px;
-}
-
-.line-bar:hover {
-  background: #2563eb;
-  transform: scaleY(1.05);
-}
-
-.line-bar.empty-bar:hover {
-  background: #cbd5e1;
-  transform: none;
-}
-
-.line-bar-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #64748b;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--warn);
   white-space: nowrap;
 }
 
-.no-data {
-  padding: 2rem;
-  text-align: center;
-  color: #94a3b8;
-  font-size: 0.875rem;
+.short-delay.late {
+  color: var(--bad);
 }
 
-.no-backlog {
-  padding: 3rem;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-}
-
-.success-icon {
-  width: 48px;
-  height: 48px;
-  color: #10b981;
-}
-
-.no-backlog-text {
-  font-size: 1.125rem;
-  color: #10b981;
-  font-weight: 600;
-  margin: 0;
-}
-
-.clickable-row {
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.clickable-row:hover {
-  background: #eff6ff !important;
-}
-
-/* Tasks Card Styles */
-.tasks-card {
-  margin-bottom: 2rem;
-}
-
-.tasks-content {
-  padding: 1.5rem;
-}
-
-.task-input-container {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.task-input {
-  flex: 1;
-  padding: 0.75rem;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  transition: border-color 0.2s ease;
-}
-
-.task-input:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.task-add-btn {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.task-add-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.task-add-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.no-tasks {
-  text-align: center;
-  padding: 2rem;
-  color: #64748b;
-  font-style: italic;
-}
-
-.tasks-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.task-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  transition: all 0.2s ease;
-}
-
-.task-item:hover {
-  border-color: #e2e8f0;
-  background: white;
-}
-
-.task-item.completed {
-  opacity: 0.6;
-}
-
-.task-item.completed .task-text {
-  text-decoration: line-through;
-  color: #94a3b8;
-}
-
-.task-checkbox {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: #667eea;
-}
-
-.task-text {
-  flex: 1;
-  cursor: pointer;
-  user-select: none;
-  color: #0f172a;
-  font-size: 0.95rem;
-}
-
-.task-delete-btn {
-  width: 28px;
-  height: 28px;
-  background: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.task-delete-btn:hover {
-  background: #dc2626;
-  transform: scale(1.1);
+.short-delay svg {
+  width: 16px;
+  height: 16px;
 }
 
 .po-button {
-  padding: 0.5rem 1rem;
+  height: 38px;
+  padding: 0 1.125rem;
+  border-radius: 999px;
   border: none;
-  border-radius: 6px;
-  font-size: 0.813rem;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.875rem;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
   white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.po-button.create {
-  background: #3b82f6;
-  color: white;
+.po-button:hover {
+  background: #3f3f46;
 }
 
-.po-button.create:hover {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+.po-button.is-view {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
-.po-button.view {
-  background: #64748b;
-  color: white;
+.po-button.is-view:hover {
+  background: var(--fill);
 }
 
-.po-button.view:hover {
-  background: #475569;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(100, 116, 139, 0.3);
+/* ---------- Category value ---------- */
+.cat-list li + li {
+  margin-top: 1.25rem;
 }
 
-/* Stack the chart cards on smaller screens (sidebar is in icon-only mode below 1024px) */
-@media (max-width: 1100px) {
-  .charts-grid {
+.cat-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.938rem;
+  color: var(--ink-2);
+}
+
+.cat-top strong {
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.cat-track {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--fill);
+  overflow: hidden;
+}
+
+.cat-bar {
+  height: 100%;
+  border-radius: 999px;
+  transform-origin: left center;
+  animation: goal-grow 0.9s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* bars use the category tint's ink colour so the list and tiles match */
+.cat-bar.cat-circuit-boards { background: #818cf8; }
+.cat-bar.cat-sensors { background: #4ade80; }
+.cat-bar.cat-actuators { background: #fbbf24; }
+.cat-bar.cat-controllers { background: #c084fc; }
+.cat-bar.cat-power-supplies { background: #fb923c; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1279px) {
+  .split {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .panel {
+    padding-right: 0;
+  }
+
+  .panel-side {
+    padding: 2.25rem 0;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+
+  .flower {
+    max-width: 360px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpi:nth-child(3) {
+    padding-left: 0;
+    border-left: none;
+  }
+
+  .kpi:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    padding-bottom: 2.5rem;
+  }
+
+  .product-row {
+    grid-template-columns: 48px minmax(0, 1fr) auto 40px;
+    grid-template-areas:
+      'tile name share menu'
+      'tile meta meta meta';
+    row-gap: 0.625rem;
+  }
+
+  .tile { grid-area: tile; align-self: start; }
+  .product-row .row-name { grid-area: name; }
+
+  .row-meta {
+    grid-area: meta;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+  }
+
+  .row-share { grid-area: share; }
+  .row-menu { grid-area: menu; }
+
+  .short-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name po'
+      'qty qty'
+      'tags tags';
+    row-gap: 0.75rem;
+  }
+
+  .short-row .row-name { grid-area: name; }
+  .short-qty { grid-area: qty; }
+  .short-tags { grid-area: tags; }
+  .po-button { grid-area: po; }
+}
+
+@media (max-width: 767px) {
+  .hero {
+    gap: 1.75rem;
+    padding: 0 0 2rem;
+  }
+
+  .hero-caption {
+    font-size: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .goal-delta {
+    font-size: 1.375rem;
+  }
+
+  .goal-line {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .goal-track {
+    height: 48px;
+  }
+
+  .kpi,
+  .kpi + .kpi {
+    padding: 1.25rem 1rem 1.25rem 0;
+  }
+
+  .kpi:nth-child(even) {
+    padding-left: 1rem;
+    padding-right: 0;
+  }
+
+  .kpi-label {
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .kpi-value {
+    font-size: 1.75rem;
+  }
+
+  .kpi-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .kpi-delta {
+    font-size: 0.813rem;
+  }
+
+  .panel,
+  .panel-side {
+    padding-top: 1.75rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .panel-title {
+    font-size: 1.25rem;
+  }
+
+  .segmented {
+    margin-left: 0;
+  }
+
+  .product-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'tile name menu'
+      'meta meta meta'
+      'share share share';
+    column-gap: 0.875rem;
+  }
+
+  .tile {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 0.688rem;
+  }
+
+  .row-meta {
+    gap: 0.5rem 1rem;
+  }
+
+  .side-stats dd {
+    font-size: 1.125rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-fill,
+  .goal-glow,
+  .goal-marker,
+  .cat-bar {
+    animation: none;
   }
 }
 </style>

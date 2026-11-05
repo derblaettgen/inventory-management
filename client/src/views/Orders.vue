@@ -250,8 +250,8 @@ export default {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   padding: 0.75rem;
   z-index: 10;
-  min-width: 300px;
-  max-width: 400px;
+  min-width: min(300px, 80vw);
+  max-width: min(400px, 90vw);
 }
 
 .item-entry {

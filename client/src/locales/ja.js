@@ -11,12 +11,23 @@ export default {
     mainNavigation: 'メインナビゲーション',
     collapseSidebar: 'サイドバーを折りたたむ',
     expandSidebar: 'サイドバーを展開',
+    openMenu: 'ナビゲーションを開く',
+    closeMenu: 'ナビゲーションを閉じる',
     subtitle: '在庫管理システム'
   },
 
   // Dashboard
   dashboard: {
     title: '概要',
+    hero: {
+      captionYTD: '今年の受注売上',
+      captionMTD: '今月の受注売上',
+      above: '売上目標を上回っています',
+      below: '売上目標まであと',
+      goal: '目標',
+      progress: '売上目標に対する実績',
+      aria: '売上 {revenue}（目標 {goal}）'
+    },
     kpi: {
       title: '主要業績評価指標',
       inventoryTurnover: '在庫回転率',
@@ -26,7 +37,9 @@ export default {
       revenueYTD: '収益（注文）年初来',
       revenueMTD: '収益（注文）月初来',
       avgProcessingTime: '平均処理時間（日）',
-      goal: '目標'
+      goal: '目標',
+      aboveGoal: '目標 {goal} を {value}% 上回る',
+      belowGoal: '目標 {goal} を {value}% 下回る'
     },
     summary: {
       title: '概要'
@@ -38,7 +51,10 @@ export default {
       avgOrderValue: '平均注文額',
       onTimeRate: '定時配達率',
       avgFulfillmentDays: '平均履行日数',
-      total: '合計'
+      total: '合計',
+      statusTitle: '注文ステータス',
+      ordersCaption: '件の注文',
+      statusAria: '注文 {total} 件: {parts}'
     },
     ordersByMonth: {
       title: '月別注文数'
@@ -59,7 +75,12 @@ export default {
       daysDelayed: '遅延日数',
       priority: '優先度',
       unitsShort: '単位不足',
-      days: '日'
+      days: '日',
+      openCount: '件の在庫不足',
+      availableOf: '{needed} 個中 {available} 個が在庫あり',
+      createPO: '発注書を作成',
+      viewPO: '発注書を表示',
+      viewDetails: '{name} の不足の詳細を表示'
     },
     topProducts: {
       title: '収益別トップ製品',
@@ -72,7 +93,15 @@ export default {
       unitsOrdered: '注文数量',
       firstOrder: '初回注文',
       inStock: '在庫あり',
-      lowStock: '在庫僅少'
+      lowStock: '在庫僅少',
+      heading: '上位製品',
+      countLine: '製品が受注済み',
+      rankBy: '並び替え',
+      byRevenue: '売上',
+      byUnits: '数量',
+      shareOfTotal: '全体比',
+      units: '個',
+      viewDetails: '{name} の詳細を表示'
     }
   },
 
@@ -199,7 +228,8 @@ export default {
     category: 'カテゴリ',
     orderStatus: '注文ステータス',
     all: 'すべて',
-    allMonths: 'すべての月'
+    allMonths: 'すべての月',
+    reset: 'すべてのフィルターをリセット'
   },
 
   // Statuses

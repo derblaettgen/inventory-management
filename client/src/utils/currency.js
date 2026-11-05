@@ -26,3 +26,15 @@ export function convertAmount(amount, currency = 'USD') {
   }
   return amount
 }
+
+// Short form for headline figures: $31.2M / ¥47億
+export function formatCurrencyCompact(amount, currency = 'USD') {
+  const isJPY = currency === 'JPY'
+  const text = new Intl.NumberFormat(isJPY ? 'ja-JP' : 'en-US', {
+    style: 'currency',
+    currency: isJPY ? 'JPY' : 'USD',
+    notation: 'compact',
+    maximumFractionDigits: 1
+  }).format(convertAmount(amount, currency))
+  return text.replace('￥', '¥') // match the half-width yen used elsewhere in the app
+}

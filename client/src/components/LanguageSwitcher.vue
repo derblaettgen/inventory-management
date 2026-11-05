@@ -97,24 +97,29 @@ const selectLanguage = (locale) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  height: 44px;
+  padding: 0 1rem;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line, #ececef);
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
   font-family: inherit;
-  font-size: 0.875rem;
-  color: #334155;
+  font-size: 0.938rem;
+  color: var(--ink, #18181b);
 }
 
 .language-button:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: var(--fill, #f4f4f5);
+}
+
+.language-button:focus-visible {
+  outline: 2px solid var(--ink, #18181b);
+  outline-offset: 2px;
 }
 
 .globe-icon {
-  color: #64748b;
+  color: var(--muted, #71717a);
   flex-shrink: 0;
 }
 
@@ -179,5 +184,28 @@ const selectLanguage = (locale) => {
 .check-icon {
   color: #2563eb;
   flex-shrink: 0;
+}
+
+/* Phones: icon-only button; the label stays for screen readers */
+@media (max-width: 767px) {
+  .language-button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .language-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  }
+
+  .language-button .chevron {
+    display: none;
+  }
 }
 </style>
