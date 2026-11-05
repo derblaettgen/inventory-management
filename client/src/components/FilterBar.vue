@@ -106,7 +106,7 @@ export default {
   border-bottom: 1px solid #e2e8f0;
   padding: 0.75rem 0;
   position: sticky;
-  top: 70px;
+  top: var(--topbar-h, 70px);
   z-index: 90;
 }
 
@@ -121,8 +121,11 @@ export default {
 
 .filters-grid {
   display: flex;
+  flex-wrap: wrap; /* wrap filters onto a second row instead of overflowing on narrow screens */
+  flex: 1;
+  min-width: 0;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
   flex: 1;
 }
 

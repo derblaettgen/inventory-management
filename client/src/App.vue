@@ -1,42 +1,59 @@
 <template>
-  <div class="app">
-    <header class="top-nav">
-      <div class="nav-container">
-        <div class="logo">
-          <h1>{{ t('nav.companyName') }}</h1>
-          <span class="subtitle">{{ t('nav.subtitle') }}</span>
+  <div class="app" :class="{ 'sidebar-collapsed': collapsed }">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark" aria-hidden="true">CC</div>
+        <div class="brand-text">
+          <span class="brand-name">{{ t('nav.companyName') }}</span>
+          <span class="brand-sub">{{ t('nav.subtitle') }}</span>
         </div>
-        <nav class="nav-tabs">
-          <router-link to="/" :class="{ active: $route.path === '/' }">
-            {{ t('nav.overview') }}
-          </router-link>
-          <router-link to="/inventory" :class="{ active: $route.path === '/inventory' }">
-            {{ t('nav.inventory') }}
-          </router-link>
-          <router-link to="/orders" :class="{ active: $route.path === '/orders' }">
-            {{ t('nav.orders') }}
-          </router-link>
-          <router-link to="/spending" :class="{ active: $route.path === '/spending' }">
-            {{ t('nav.finance') }}
-          </router-link>
-          <router-link to="/demand" :class="{ active: $route.path === '/demand' }">
-            {{ t('nav.demandForecast') }}
-          </router-link>
-          <router-link to="/reports" :class="{ active: $route.path === '/reports' }">
-            Reports
-          </router-link>
-        </nav>
-        <LanguageSwitcher />
-        <ProfileMenu
-          @show-profile-details="showProfileDetails = true"
-          @show-tasks="showTasks = true"
-        />
       </div>
-    </header>
-    <FilterBar />
-    <main class="main-content">
-      <router-view />
-    </main>
+      <nav class="sidebar-nav" :aria-label="t('nav.mainNavigation')">
+        <router-link
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          class="nav-item"
+          :class="{ active: $route.path === item.to }"
+          :title="collapsed ? t(item.label) : null"
+        >
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path v-for="d in item.icon" :key="d" :d="d" />
+          </svg>
+          <span class="nav-label">{{ t(item.label) }}</span>
+        </router-link>
+      </nav>
+      <button
+        class="collapse-btn"
+        type="button"
+        :aria-expanded="!collapsed"
+        :aria-label="collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')"
+        :title="collapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')"
+        @click="toggleSidebar"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M15 6l-6 6 6 6" />
+        </svg>
+        <span class="nav-label">{{ t('nav.collapseSidebar') }}</span>
+      </button>
+    </aside>
+
+    <div class="shell">
+      <header class="topbar">
+        <h1 class="topbar-title">{{ currentTitle }}</h1>
+        <div class="topbar-actions">
+          <LanguageSwitcher />
+          <ProfileMenu
+            @show-profile-details="showProfileDetails = true"
+            @show-tasks="showTasks = true"
+          />
+        </div>
+      </header>
+      <FilterBar />
+      <main class="main-content">
+        <router-view />
+      </main>
+    </div>
 
     <ProfileDetailsModal
       :is-open="showProfileDetails"
@@ -55,7 +72,8 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { api } from './api'
 import { useAuth } from './composables/useAuth'
 import { useI18n } from './composables/useI18n'
@@ -80,6 +98,40 @@ export default {
     const showProfileDetails = ref(false)
     const showTasks = ref(false)
     const apiTasks = ref([])
+    const route = useRoute()
+
+    // Sidebar navigation: icon paths are 24x24 stroke icons (no emojis per design system)
+    const navItems = [
+      { to: '/', label: 'nav.overview', icon: ['M3 13h8V3H3z', 'M13 21h8V11h-8z', 'M3 21h8v-6H3z', 'M13 9h8V3h-8z'] },
+      { to: '/inventory', label: 'nav.inventory', icon: ['M21 8l-9-5-9 5 9 5 9-5z', 'M3 8v8l9 5 9-5V8', 'M12 13v8'] },
+      { to: '/orders', label: 'nav.orders', icon: ['M6 2h12l2 4v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z', 'M4 6h16', 'M9 11h6', 'M9 15h6'] },
+      { to: '/spending', label: 'nav.finance', icon: ['M12 2v20', 'M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'] },
+      { to: '/demand', label: 'nav.demandForecast', icon: ['M3 17l6-6 4 4 8-8', 'M15 7h6v6'] },
+      { to: '/reports', label: 'nav.reports', icon: ['M4 20V10', 'M10 20V4', 'M16 20v-6', 'M22 20H2'] }
+    ]
+
+    const currentTitle = computed(() => {
+      const item = navItems.find(n => n.to === route.path)
+      return item ? t(item.label) : ''
+    })
+
+    // Collapsible sidebar: user preference is remembered; below 1024px it is
+    // forced into icon-only mode so content keeps enough width.
+    const STORAGE_KEY = 'sidebarCollapsed'
+    const readPref = () => {
+      try { return localStorage.getItem(STORAGE_KEY) === 'true' } catch { return false }
+    }
+    const userCollapsed = ref(readPref())
+    const isNarrow = ref(false)
+    const collapsed = computed(() => userCollapsed.value || isNarrow.value)
+    const toggleSidebar = () => {
+      // On narrow screens the toggle temporarily expands instead of flipping the stored pref
+      if (isNarrow.value) { isNarrow.value = false; userCollapsed.value = false; return }
+      userCollapsed.value = !userCollapsed.value
+      try { localStorage.setItem(STORAGE_KEY, String(userCollapsed.value)) } catch { /* storage unavailable */ }
+    }
+    let mq = null
+    const onMq = (e) => { isNarrow.value = e.matches }
 
     // Merge mock tasks from currentUser with API tasks
     const tasks = computed(() => {
@@ -146,10 +198,20 @@ export default {
       }
     }
 
-    onMounted(loadTasks)
+    onMounted(() => {
+      loadTasks()
+      mq = window.matchMedia('(max-width: 1023px)')
+      isNarrow.value = mq.matches
+      mq.addEventListener('change', onMq)
+    })
+    onBeforeUnmount(() => mq && mq.removeEventListener('change', onMq))
 
     return {
       t,
+      navItems,
+      currentTitle,
+      collapsed,
+      toggleSidebar,
       showProfileDetails,
       showTasks,
       tasks,
@@ -176,94 +238,212 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+:root {
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 72px;
+  --topbar-h: 70px;
+  --sidebar-bg: #0f172a;
+  --sidebar-fg: #e2e8f0;
+  --sidebar-muted: #94a3b8;
+  --accent: #2563eb;
+  --accent-soft: #eff6ff;
+  --surface: #ffffff;
+  --canvas: #f8fafc;
+  --border: #e2e8f0;
+  --radius: 12px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
 .app {
-  display: flex;
-  flex-direction: column;
   min-height: 100vh;
 }
 
-.top-nav {
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-  position: sticky;
-  top: 0;
-  z-index: 100;
+/* ---------- Sidebar ---------- */
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  color: var(--sidebar-fg);
+  display: flex;
+  flex-direction: column;
+  z-index: 110;
+  transition: width 0.2s ease;
+  overflow: hidden;
 }
 
-.nav-container {
-  max-width: 1600px;
-  margin: 0 auto;
+.sidebar-collapsed .sidebar {
+  width: var(--sidebar-w-collapsed);
+}
+
+.sidebar-brand {
   display: flex;
   align-items: center;
-  padding: 0 2rem;
-  height: 70px;
-}
-
-.nav-container > .nav-tabs {
-  margin-left: auto;
-  margin-right: 1rem;
-}
-
-.nav-container > .language-switcher {
-  margin-right: 1rem;
-}
-
-.logo {
-  display: flex;
-  align-items: baseline;
   gap: 0.75rem;
+  height: var(--topbar-h);
+  padding: 0 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  flex-shrink: 0;
 }
 
-.logo h1 {
-  font-size: 1.375rem;
+.brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
   font-weight: 700;
-  color: #0f172a;
-  letter-spacing: -0.025em;
+  font-size: 0.875rem;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
 }
 
-.subtitle {
-  font-size: 0.813rem;
-  color: #64748b;
-  font-weight: 400;
-  padding-left: 0.75rem;
-  border-left: 1px solid #e2e8f0;
-}
-
-.nav-tabs {
+.brand-text {
   display: flex;
-  gap: 0.25rem;
+  flex-direction: column;
+  min-width: 0;
+  white-space: nowrap;
 }
 
-.nav-tabs a {
-  padding: 0.625rem 1.25rem;
-  color: #64748b;
+.brand-name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.brand-sub {
+  font-size: 0.75rem;
+  color: var(--sidebar-muted);
+}
+
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem 0.75rem;
+}
+
+.nav-item,
+.collapse-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 44px;
+  padding: 0 0.875rem;
+  border-radius: 8px;
+  color: var(--sidebar-muted);
   text-decoration: none;
   font-weight: 500;
   font-size: 0.938rem;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  position: relative;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.nav-tabs a:hover {
-  color: #0f172a;
-  background: #f1f5f9;
+.nav-item:hover,
+.collapse-btn:hover {
+  background: rgba(148, 163, 184, 0.12);
+  color: #fff;
 }
 
-.nav-tabs a.active {
-  color: #2563eb;
-  background: #eff6ff;
+.nav-item.active {
+  background: rgba(37, 99, 235, 0.18);
+  color: #fff;
 }
 
-.nav-tabs a.active::after {
+.nav-item.active::before {
   content: '';
   position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: #2563eb;
+  left: -0.75rem;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: #60a5fa;
+}
+
+.nav-item:focus-visible,
+.collapse-btn:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.nav-icon,
+.collapse-btn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.collapse-btn {
+  margin: 0.75rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.collapse-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.sidebar-collapsed .collapse-btn svg {
+  transform: rotate(180deg);
+}
+
+.sidebar-collapsed .nav-label,
+.sidebar-collapsed .brand-text {
+  display: none;
+}
+
+.sidebar-collapsed .nav-item,
+.sidebar-collapsed .collapse-btn {
+  justify-content: center;
+  padding: 0;
+}
+
+/* ---------- Shell / topbar ---------- */
+.shell {
+  margin-left: var(--sidebar-w);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.2s ease;
+}
+
+.sidebar-collapsed .shell {
+  margin-left: var(--sidebar-w-collapsed);
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .main-content {
@@ -271,7 +451,7 @@ body {
   max-width: 1600px;
   width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 2rem;
+  padding: 1.75rem 2rem 2.5rem;
 }
 
 .page-header {
@@ -299,16 +479,17 @@ body {
 }
 
 .stat-card {
-  background: white;
-  padding: 1.25rem;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  transition: all 0.2s ease;
+  background: var(--surface);
+  padding: 1.25rem 1.375rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .stat-card:hover {
   border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .stat-label {
@@ -344,10 +525,11 @@ body {
 }
 
 .card {
-  background: white;
-  border-radius: 10px;
-  padding: 1.25rem;
-  border: 1px solid #e2e8f0;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 1.375rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
   margin-bottom: 1.25rem;
 }
 
