@@ -812,7 +812,8 @@ export default {
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* minmax(0, 1fr) lets columns shrink below their content width instead of overflowing */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
   margin-bottom: 1.5rem;
 }
@@ -860,7 +861,7 @@ export default {
 /* Order Health Dashboard Styles */
 .order-health-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.5rem;
   align-items: center;
   padding: 1rem;
@@ -1267,5 +1268,12 @@ export default {
   background: #475569;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(100, 116, 139, 0.3);
+}
+
+/* Stack the chart cards on smaller screens (sidebar is in icon-only mode below 1024px) */
+@media (max-width: 1100px) {
+  .charts-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>
